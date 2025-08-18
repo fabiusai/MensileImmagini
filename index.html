@@ -56,7 +56,6 @@
             font-weight: 700;
         }
 
-        /* --- NUOVA AREA DI UPLOAD --- */
         #upload-area {
             text-align: center;
             padding: 60px 30px;
@@ -192,7 +191,6 @@
         </header>
 
         <main id="main-content">
-            <!-- 1. Stato iniziale: Area di Upload -->
             <div id="upload-area">
                 <div class="upload-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
@@ -202,10 +200,8 @@
             </div>
             <input type="file" id="file-input" class="hidden" accept=".xlsx, .xls">
             
-            <!-- 2. Stato intermedio: Messaggio di caricamento -->
             <div id="status-message" class="hidden"></div>
             
-            <!-- 3. Stato finale: Filtri e Post -->
             <section id="filters-section" class="filters-section hidden">
                 <div class="filter-group">
                     <label>File caricato</label>
@@ -234,7 +230,6 @@
     <script>
         const uploadArea = document.getElementById('upload-area');
         const fileInput = document.getElementById('file-input');
-        const mainContent = document.getElementById('main-content');
         const statusMessage = document.getElementById('status-message');
         const filtersSection = document.getElementById('filters-section');
         const fileInfo = document.getElementById('file-info');
@@ -246,7 +241,6 @@
         let allPosts = [];
         let datePicker = null;
 
-        // --- GESTIONE UPLOAD (CLICK + DRAG & DROP) ---
         uploadArea.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', (e) => handleFileSelect(e.target.files[0]));
         
@@ -254,30 +248,17 @@
             uploadArea.addEventListener(eventName, preventDefaults, false);
             document.body.addEventListener(eventName, preventDefaults, false);
         });
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, () => uploadArea.classList.add('is-dragging'), false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('is-dragging'), false);
-        });
-
+        ['dragenter', 'dragover'].forEach(eventName => uploadArea.addEventListener(eventName, () => uploadArea.classList.add('is-dragging'), false));
+        ['dragleave', 'drop'].forEach(eventName => uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('is-dragging'), false));
         uploadArea.addEventListener('drop', (e) => handleFileSelect(e.dataTransfer.files[0]), false);
 
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
 
-        // --- FILTRI ---
         searchInput.addEventListener('input', renderPosts);
         channelFilter.addEventListener('change', renderPosts);
 
         function handleFileSelect(file) {
             if (!file) return;
-
-            // Transizione UI
             uploadArea.classList.add('hidden');
             postContainer.innerHTML = '';
             statusMessage.textContent = 'Lettura file in corso...';
@@ -292,12 +273,9 @@
                         const firstSheetName = workbook.SheetNames[0];
                         const worksheet = workbook.Sheets[firstSheetName];
                         const jsonData = XLSX.utils.sheet_to_json(worksheet);
-                        
                         if (jsonData.length === 0) throw new Error("Il file Excel è vuoto o non contiene dati validi.");
-                        
                         fileInfo.textContent = file.name;
                         processDataAsync(jsonData);
-                        
                     } catch (error) {
                         handleProcessingError(error);
                     }
@@ -318,19 +296,15 @@
             let currentIndex = 0;
             const CHUNK_SIZE = 100;
             allPosts = [];
-            
             function processChunk() {
                 const chunkEnd = Math.min(currentIndex + CHUNK_SIZE, data.length);
-                
                 for (let i = currentIndex; i < chunkEnd; i++) {
                     const row = data[i];
                     try {
                         const publishedDate = (typeof row.published === 'number')
                             ? new Date(Date.UTC(1899, 11, 30) + row.published * 24 * 60 * 60 * 1000)
                             : new Date(row.published);
-
                         if (!row.published || !row.url || isNaN(publishedDate.getTime())) continue;
-
                         allPosts.push({
                             channel: formatChannel(row['domain_url'], row['extra_author_attributes.name']),
                             published: publishedDate,
@@ -340,18 +314,11 @@
                         });
                     } catch (e) { /* Salta riga con errore */ }
                 }
-                
                 currentIndex = chunkEnd;
-                const progress = Math.round((currentIndex / data.length) * 100);
-                statusMessage.textContent = `Elaborazione dati... ${progress}%`;
-
-                if (currentIndex < data.length) {
-                    setTimeout(processChunk, 0);
-                } else {
-                    onProcessingComplete();
-                }
+                statusMessage.textContent = `Elaborazione dati... ${Math.round((currentIndex / data.length) * 100)}%`;
+                if (currentIndex < data.length) setTimeout(processChunk, 0);
+                else onProcessingComplete();
             }
-            
             processChunk();
         }
         
@@ -360,10 +327,8 @@
                 handleProcessingError(new Error("Nessun dato valido trovato nel file."));
                 return;
             }
-            
             statusMessage.classList.add('hidden');
             filtersSection.classList.remove('hidden');
-            
             populateChannelFilter();
             setupDatePicker();
             renderPosts();
@@ -385,7 +350,6 @@
             const validDates = allPosts.map(p => p.published);
             const minDate = new Date(Math.min.apply(null, validDates));
             const maxDate = new Date(Math.max.apply(null, validDates));
-            
             datePicker = new Litepicker({
                 element: document.getElementById('date-picker'),
                 singleMode: false, allowRepick: true,
@@ -399,14 +363,12 @@
         function renderPosts() {
             const searchTerm = searchInput.value.toLowerCase();
             const selectedChannel = channelFilter.value;
-            
             let startDate = null, endDate = null;
             if (datePicker && datePicker.getStartDate() && datePicker.getEndDate()) {
                 startDate = datePicker.getStartDate().dateInstance;
                 endDate = datePicker.getEndDate().dateInstance;
                 endDate.setHours(23, 59, 59, 999);
             }
-
             const filteredPosts = allPosts.filter(post => {
                 const matchesDate = !startDate || (post.published >= startDate && post.published <= endDate);
                 const matchesSearch = !searchTerm || post.copy.toLowerCase().includes(searchTerm);
@@ -422,9 +384,10 @@
             const postsHtml = filteredPosts
                 .sort((a, b) => b.published - a.published)
                 .map(post => {
+                    // --- CORREZIONE: Aggiunto target="_blank" al link dell'immagine ---
                     const imageHtml = post.imageUrl
                         ? `
-                           <a href="${post.imageUrl}" download title="Clicca per scaricare l'immagine">
+                           <a href="${post.imageUrl}" download target="_blank" rel="noopener noreferrer" title="Clicca per scaricare o aprire in una nuova scheda">
                                 <img src="${post.imageUrl}" alt="Immagine del post" class="card-image" loading="lazy" 
                                      onerror="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='flex';">
                            </a>
@@ -452,14 +415,11 @@
             postContainer.innerHTML = postsHtml;
         }
 
-        function isImageUrl(url) {
-            return /\.(jpeg|jpg|gif|png|webp)\b/i.test(url);
-        }
+        function isImageUrl(url) { return /\.(jpeg|jpg|gif|png|webp)\b/i.test(url); }
 
         function findImageUrl(row) {
             const imageUrl = row['images.url'];
             if (imageUrl && typeof imageUrl === 'string') return imageUrl;
-
             const entityData = row['entity_urls'];
             if (entityData && typeof entityData === 'string' && entityData.length < 5000) {
                 try {
@@ -472,10 +432,8 @@
                     }
                 } catch (e) { /* Ignora JSON non valido */ }
             }
-            
             const videoUrl = row['videos.url'];
             if (videoUrl && typeof videoUrl === 'string') return videoUrl;
-
             return '';
         }
 
@@ -483,9 +441,7 @@
             const safeAuthor = author || '';
             let channelName = 'Social';
             if (domain && typeof domain === 'string') {
-                let cleanName = domain.toLowerCase()
-                                      .replace(/^(https?:\/\/)?(www\.)?/, '')
-                                      .replace(/\..*$/, '');
+                let cleanName = domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\..*$/, '');
                 if (cleanName === 'x') cleanName = 'twitter';
                 if (cleanName === 'twitter') channelName = 'X (Twitter)';
                 else if (cleanName) channelName = capitalizeFirstLetter(cleanName);
@@ -493,9 +449,7 @@
             return `${channelName} ${capitalizeFirstLetter(safeAuthor)}`;
         }
 
-        function capitalizeFirstLetter(string) {
-            return string ? string.charAt(0).toUpperCase() + string.slice(1) : '';
-        }
+        function capitalizeFirstLetter(string) { return string ? string.charAt(0).toUpperCase() + string.slice(1) : ''; }
 
         function truncateCopy(text, maxLength = 300) {
             if (!text || text.length <= maxLength) return text;
