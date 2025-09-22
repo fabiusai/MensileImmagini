@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual report mensile</title>
+    <link rel="icon" href="favicon.ico">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css"/>
+
+    <style>
+        :root {
+            --brand-blue: #004281;
+            --brand-yellow: #FFCC00;
+            --light-grey: #f0f2f5;
+            --medium-grey: #6c757d;
+            --dark-grey: #343a40;
+            --border-color: #dee2e6;
+            --background-color: #ffffff;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            margin: 0;
+            background-color: var(--light-grey);
+            color: var(--dark-grey);
+            line-height: 1.6;
+        }
+
+        .app-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background-color: var(--background-color);
+            padding: 20px;
+            border-bottom: 4px solid var(--brand-yellow);
+            text-align: center;
+            margin-bottom: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        header h1 {
+            color: var(--brand-blue);
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        #upload-area {
+            text-align: center;
+            padding: 60px 30px;
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            background-color: var(--background-color);
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        #upload-area.is-dragging {
+            border-color: var(--brand-blue);
+            background-color: #e9f0f7;
+        }
+
+        #upload-area:hover {
+            border-color: var(--medium-grey);
+        }
+
+        .upload-icon {
+            color: var(--brand-blue);
+            margin-bottom: 20px;
+        }
+
+        #upload-area h2 {
+            margin: 0 0 10px 0;
+            color: var(--dark-grey);
+            font-size: 1.5rem;
+        }
+
+        #upload-area p {
+            margin: 0;
+            color: var(--medium-grey);
+        }
+        
+        #status-message {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2rem;
+            color: var(--medium-grey);
+            background-color: var(--background-color);
+            border-radius: 8px;
+        }
+
+        .filters-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 25px;
+            padding: 20px;
+            background-color: var(--background-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            flex: 1 1 250px;
+        }
+
+        .filter-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--brand-blue);
+        }
+        
+        .input-field {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background-color: white;
+            -webkit-appearance: none;
+        }
+        
+        select.input-field {
+             background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E');
+             background-repeat: no-repeat;
+             background-position: right .7em top 50%;
+             background-size: .65em auto;
+             padding-right: 2.5em;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--brand-blue);
+            box-shadow: 0 0 0 3px rgba(0, 66, 129, 0.15);
+        }
+
+        #post-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+        
+        .post-card {
+            background-color: var(--background-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .post-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+        }
+
+        .card-header { padding: 15px; font-weight: bold; color: var(--brand-blue); border-bottom: 1px solid var(--border-color); }
+        .card-date { font-size: 0.85rem; font-weight: bold; color: var(--medium-grey); margin-top: 4px; display: inline-block; text-decoration: none; }
+        .card-date:hover { text-decoration: underline; color: var(--brand-blue); }
+        .card-image-container { position: relative; }
+        .card-image { width: 100%; height: 250px; object-fit: cover; display: block; }
+        .card-image-placeholder { width: 100%; height: 250px; background-color: var(--light-grey); display: flex; align-items: center; justify-content: center; color: var(--medium-grey); font-size: 0.9em; text-decoration: none; border-bottom: 2px solid var(--brand-blue); transition: background-color 0.2s; }
+        .card-image-placeholder:hover { background-color: #e2e6ea; }
+        .card-content { padding: 15px; flex-grow: 1; }
+        .card-copy { font-size: 0.95rem; }
+        .hidden { display: none !important; }
+
+        .copy-icon-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            background-color: rgba(0, 66, 129, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s, transform 0.2s;
+            backdrop-filter: blur(4px);
+            padding: 0;
+            font-size: 11px;
+        }
+        .copy-icon-button:hover {
+            background-color: var(--brand-blue);
+            transform: scale(1.1);
+        }
+        .copy-icon-button svg {
+            width: 20px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header>
+            <h1>Visual report mensile</h1>
+        </header>
+
+        <main id="main-content">
+            <div id="upload-area">
+                <div class="upload-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                </div>
+                <h2>Inizia caricando il tuo report</h2>
+                <p>Trascina qui il tuo file Excel o clicca per selezionarlo</p>
+            </div>
+            <input type="file" id="file-input" class="hidden" accept=".xlsx, .xls">
+            
+            <div id="status-message" class="hidden"></div>
+            
+            <section id="filters-section" class="filters-section hidden">
+                <div class="filter-group">
+                    <label>File caricato</label>
+                    <div id="file-info" class="input-field" style="background-color: #f8f9fa; color: #495057;">Nessun file</div>
+                </div>
+                <div class="filter-group">
+                    <label for="date-picker">Filtra per data</label>
+                    <input class="input-field" id="date-picker">
+                </div>
+                <div class="filter-group">
+                    <label for="search-input">Cerca nel testo</label>
+                    <input class="input-field" type="search" id="search-input" placeholder="Cerca parole nel copy...">
+                </div>
+                <div class="filter-group">
+                    <label for="channel-filter">Filtra per canale</label>
+                    <select id="channel-filter" class="input-field">
+                        <option value="">-- Seleziona --</option>
+                    </select>
+                </div>
+            </section>
+            
+            <section id="post-container"></section>
+        </main>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const statusMessage = document.getElementById('status-message');
+        const filtersSection = document.getElementById('filters-section');
+        const fileInfo = document.getElementById('file-info');
+        const datePickerInput = document.getElementById('date-picker');
+        const searchInput = document.getElementById('search-input');
+        const channelFilter = document.getElementById('channel-filter');
+        const postContainer = document.getElementById('post-container');
+
+        let allPosts = [];
+        let datePicker = null;
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFileSelect(e.target.files[0]));
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+        ['dragenter', 'dragover'].forEach(eventName => uploadArea.addEventListener(eventName, () => uploadArea.classList.add('is-dragging'), false));
+        ['dragleave', 'drop'].forEach(eventName => uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('is-dragging'), false));
+        uploadArea.addEventListener('drop', (e) => handleFileSelect(e.dataTransfer.files[0]), false);
+
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
+        searchInput.addEventListener('input', renderPosts);
+        channelFilter.addEventListener('change', renderPosts);
+
+        function handleFileSelect(file) {
+            if (!file) return;
+            uploadArea.classList.add('hidden');
+            postContainer.innerHTML = '';
+            statusMessage.textContent = 'Lettura file in corso...';
+            statusMessage.classList.remove('hidden');
+            
+            setTimeout(() => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                        if (jsonData.length === 0) throw new Error("Il file Excel è vuoto o non contiene dati validi.");
+                        fileInfo.textContent = file.name;
+                        processDataAsync(jsonData);
+                    } catch (error) {
+                        handleProcessingError(error);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }, 100);
+        }
+        
+        function handleProcessingError(error) {
+            statusMessage.innerHTML = `<p style="color: #dc3545;"><strong>Errore:</strong> ${error.message}</p><p>Riprova con un file valido.</p>`;
+            setTimeout(() => {
+                statusMessage.classList.add('hidden');
+                uploadArea.classList.remove('hidden');
+            }, 4000);
+        }
+
+        function processDataAsync(data) {
+            let currentIndex = 0;
+            const CHUNK_SIZE = 100;
+            allPosts = [];
+            function processChunk() {
+                const chunkEnd = Math.min(currentIndex + CHUNK_SIZE, data.length);
+                for (let i = currentIndex; i < chunkEnd; i++) {
+                    const row = data[i];
+                    try {
+                        const publishedDate = (typeof row.published === 'number')
+                            ? new Date(Date.UTC(1899, 11, 30) + row.published * 24 * 60 * 60 * 1000)
+                            : new Date(row.published);
+                        if (!row.published || !row.url || isNaN(publishedDate.getTime())) continue;
+                        allPosts.push({
+                            channel: formatChannel(row['domain_url'], row['extra_author_attributes.name']),
+                            published: publishedDate,
+                            url: row.url,
+                            imageUrl: findImageUrl(row),
+                            copy: truncateCopy(row.content || ''),
+                        });
+                    } catch (e) { /* Salta riga con errore */ }
+                }
+                currentIndex = chunkEnd;
+                statusMessage.textContent = `Elaborazione dati... ${Math.round((currentIndex / data.length) * 100)}%`;
+                if (currentIndex < data.length) setTimeout(processChunk, 0);
+                else onProcessingComplete();
+            }
+            processChunk();
+        }
+        
+        function onProcessingComplete() {
+            if (allPosts.length === 0) {
+                handleProcessingError(new Error("Nessun dato valido trovato nel file."));
+                return;
+            }
+            statusMessage.classList.add('hidden');
+            filtersSection.classList.remove('hidden');
+            populateChannelFilter();
+            setupDatePicker();
+            renderPosts();
+        }
+
+        function populateChannelFilter() {
+            const channels = [...new Set(allPosts.map(post => post.channel))].sort();
+            channelFilter.innerHTML = '<option value="">Tutti i canali</option>';
+            channels.forEach(channel => {
+                const option = document.createElement('option');
+                option.value = channel;
+                option.textContent = channel;
+                channelFilter.appendChild(option);
+            });
+        }
+        
+        function setupDatePicker() {
+            if (datePicker) datePicker.destroy();
+            const validDates = allPosts.map(p => p.published);
+            const minDate = new Date(Math.min.apply(null, validDates));
+            const maxDate = new Date(Math.max.apply(null, validDates));
+            datePicker = new Litepicker({
+                element: document.getElementById('date-picker'),
+                singleMode: false, allowRepick: true,
+                minDate: minDate, maxDate: maxDate,
+                startDate: minDate, endDate: maxDate,
+                format: 'DD/MM/YYYY',
+                setup: (picker) => picker.on('selected', () => renderPosts()),
+            });
+        }
+
+        function renderPosts() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedChannel = channelFilter.value;
+            let startDate = null, endDate = null;
+            if (datePicker && datePicker.getStartDate() && datePicker.getEndDate()) {
+                startDate = datePicker.getStartDate().dateInstance;
+                endDate = datePicker.getEndDate().dateInstance;
+                endDate.setHours(23, 59, 59, 999);
+            }
+            const filteredPosts = allPosts.filter(post => {
+                const matchesDate = !startDate || (post.published >= startDate && post.published <= endDate);
+                const matchesSearch = !searchTerm || post.copy.toLowerCase().includes(searchTerm);
+                const matchesChannel = !selectedChannel || post.channel === selectedChannel;
+                return matchesDate && matchesSearch && matchesChannel;
+            });
+            
+            if (filteredPosts.length === 0) {
+                 postContainer.innerHTML = `<div id="status-message"><p>Nessun post corrisponde ai criteri di ricerca.</p></div>`;
+                 return;
+            }
+            
+            const postsHtml = filteredPosts
+                .sort((a, b) => b.published - a.published)
+                .map(post => {
+                    const copyIconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+                    const imageHtml = post.imageUrl
+                        ? `
+                           <div class="card-image-container">
+                               <button class="copy-icon-button" title="Copia immagine" onclick="copyImageToClipboard('${post.imageUrl}', this)">
+                                   ${copyIconSvg}
+                               </button>
+                               <a href="${post.imageUrl}" download target="_blank" rel="noopener noreferrer" title="Clicca per scaricare o aprire in una nuova scheda">
+                                    <img src="${post.imageUrl}" alt="Immagine del post" class="card-image" loading="lazy" 
+                                         onerror="this.parentElement.style.display='none'; this.parentElement.parentElement.querySelector('.card-image-placeholder').style.display='flex';">
+                               </a>
+                               <a href="${post.imageUrl}" target="_blank" rel="noopener noreferrer" class="card-image-placeholder" style="display:none;" 
+                                  title="L'immagine è bloccata dal browser (CORS). Clicca per aprirla in una nuova scheda.">
+                                    Apri immagine
+                               </a>
+                           </div>`
+                        : `<div class="card-image-placeholder">Nessuna immagine</div>`;
+
+                    return `
+                        <div class="post-card">
+                            <div class="card-header">
+                                ${post.channel}
+                                <a href="${post.url}" target="_blank" rel="noopener noreferrer" class="card-date">
+                                    ${post.published.toLocaleDateString('it-IT', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                </a>
+                            </div>
+                            ${imageHtml}
+                            <div class="card-content">
+                                <p class="card-copy">${post.copy}</p>
+                            </div>
+                        </div>`;
+                }).join('');
+
+            postContainer.innerHTML = postsHtml;
+        }
+
+        async function copyImageToClipboard(imageUrl, buttonEl) {
+            const originalContent = buttonEl.innerHTML;
+            
+            // !! IMPORTANTE !!
+            // Questa riga verrà aggiornata con l'URL del tuo server su Render.
+            const proxyUrl = 'https://NOME-DEL-TUO-PROXY.onrender.com/proxy?url=';
+            const urlToFetch = proxyUrl + encodeURIComponent(imageUrl);
+
+            try {
+                const response = await fetch(urlToFetch);
+                if (!response.ok) throw new Error(`Errore dal proxy: ${response.statusText}`);
+
+                const blob = await response.blob();
+                
+                await navigator.clipboard.write([
+                    new ClipboardItem({ [blob.type]: blob })
+                ]);
+
+                buttonEl.innerHTML = 'Copiata!';
+                buttonEl.style.backgroundColor = '#28a745';
+            } catch (err) {
+                console.error('Errore durante la copia via proxy:', err);
+                buttonEl.innerHTML = 'Errore!';
+                buttonEl.style.backgroundColor = '#dc3545';
+            } finally {
+                setTimeout(() => {
+                    buttonEl.innerHTML = originalContent;
+                    buttonEl.style.backgroundColor = '';
+                }, 2000);
+            }
+        }
+
+        function isImageUrl(url) { return /\.(jpeg|jpg|gif|png|webp)\b/i.test(url); }
+
+        function findImageUrl(row) {
+            if (row.url && row.url.includes('instagram.com/p/')) {
+                return '';
+            }
+            
+            const imageUrl = row['images.url'];
+            if (imageUrl && typeof imageUrl === 'string') return imageUrl;
+            
+            const entityData = row['entity_urls'];
+            if (entityData && typeof entityData === 'string' && entityData.length < 5000) {
+                try {
+                    const entities = JSON.parse(entityData);
+                    if (Array.isArray(entities)) {
+                        for (const entity of entities) {
+                            const possibleUrl = entity.url || entity.media_url || entity.image_url || entity.expanded_url;
+                            if (possibleUrl && isImageUrl(possibleUrl)) return possibleUrl;
+                        }
+                    }
+                } catch (e) { /* Ignora JSON non valido */ }
+            }
+            
+            const videoUrl = row['videos.url'];
+            if (videoUrl && typeof videoUrl === 'string') return videoUrl;
+            
+            return '';
+        }
+
+        function formatChannel(domain, author) {
+            const safeAuthor = author || '';
+            let channelName = 'Social';
+            if (domain && typeof domain === 'string') {
+                let cleanName = domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\..*$/, '');
+                if (cleanName === 'x') cleanName = 'twitter';
+                if (cleanName === 'twitter') channelName = 'X (Twitter)';
+                else if (cleanName) channelName = capitalizeFirstLetter(cleanName);
+            }
+            return `${channelName} ${capitalizeFirstLetter(safeAuthor)}`;
+        }
+
+        function capitalizeFirstLetter(string) { return string ? string.charAt(0).toUpperCase() + string.slice(1) : ''; }
+
+        function truncateCopy(text, maxLength = 300) {
+            if (!text || text.length <= maxLength) return text;
+            const truncated = text.substring(0, maxLength);
+            const lastPeriod = truncated.lastIndexOf('.');
+            return (lastPeriod > 0) ? truncated.substring(0, lastPeriod + 1) : truncated + '...';
+        }
+    </script>
+</body>
+</html>
