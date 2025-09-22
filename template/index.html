@@ -450,9 +450,6 @@
 
         async function copyImageToClipboard(imageUrl, buttonEl) {
             const originalContent = buttonEl.innerHTML;
-            
-            // !! IMPORTANTE !!
-            // Questa riga verrà aggiornata con l'URL del tuo server su Render.
             const proxyUrl = 'https://mensileimmagini.onrender.com/proxy?url=';
             const urlToFetch = proxyUrl + encodeURIComponent(imageUrl);
 
@@ -460,16 +457,56 @@
                 const response = await fetch(urlToFetch);
                 if (!response.ok) throw new Error(`Errore dal proxy: ${response.statusText}`);
 
-                const blob = await response.blob();
-                
+                const originalBlob = await response.blob();
+
+                // --- INIZIO NUOVA LOGICA DI CONVERSIONE IN PNG ---
+
+                const pngBlob = await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    img.onload = () => {
+                        // Imposta le dimensioni del canvas uguali a quelle dell'immagine
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        
+                        // Disegna l'immagine sul canvas
+                        ctx.drawImage(img, 0, 0);
+                        
+                        // Converte il contenuto del canvas in un Blob di tipo PNG
+                        canvas.toBlob(blob => {
+                            if (blob) {
+                                resolve(blob);
+                            } else {
+                                reject(new Error('Conversione in PNG fallita.'));
+                            }
+                        }, 'image/png');
+
+                        // Rilascia l'URL dell'oggetto per liberare memoria
+                        URL.revokeObjectURL(img.src);
+                    };
+
+                    img.onerror = () => {
+                        reject(new Error('Impossibile caricare l\'immagine per la conversione.'));
+                        URL.revokeObjectURL(img.src);
+                    };
+
+                    // Carica il blob originale nell'elemento immagine
+                    img.src = URL.createObjectURL(originalBlob);
+                });
+
+                // --- FINE NUOVA LOGICA ---
+
+                // Ora copiamo il nuovo Blob convertito in PNG
                 await navigator.clipboard.write([
-                    new ClipboardItem({ [blob.type]: blob })
+                    new ClipboardItem({ 'image/png': pngBlob })
                 ]);
 
                 buttonEl.innerHTML = 'Copiata!';
                 buttonEl.style.backgroundColor = '#28a745';
             } catch (err) {
-                console.error('Errore durante la copia via proxy:', err);
+                console.error('Errore durante la copia:', err);
                 buttonEl.innerHTML = 'Errore!';
                 buttonEl.style.backgroundColor = '#dc3545';
             } finally {
